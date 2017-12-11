@@ -11,8 +11,6 @@
 !
 ! ifort -O2 -axAVX -lnetcdff -L$NETCDF/lib -I$NETCDF/include g_saprc_2014.f90 -o saprc.exe
 !
-!   Si son mas de 8 capas arreglar linea 219
-!      eeft(i,j,ii,ih,9-levl)=eft(i,j,ii,ih,9-levl)+edum(ih)/WTM(ii)
 !
 !   Actualizacion de xlat, xlon              26/08/2012
 !   Conversion de unidades en aerosoles      04/10/2012
@@ -21,8 +19,10 @@
 !   Para año 2014 ns,ipm,icn,jcn,imt,jmt     12/07/2017
 !   Dos capas en puntuales                  18707/2017
 !   Se incluyen NO y NO2 de moviles         01/11/2017
+!   Se lee CDIM y titulo de localiza.csv    19/11/2017
+!   Se emplea namelist.saprc
 !
-module vars
+module varss
     integer :: nf    ! number of files antropogenic
     integer :: ns    ! number of compounds
     integer ::ncel   ! number of cell in the grid
@@ -45,6 +45,7 @@ module vars
     real,allocatable :: utmx(:),utmy(:)
     real,allocatable :: xlon(:,:),xlat(:,:),pob(:,:)
     real,allocatable :: utmxd(:,:),utmyd(:,:)
+    real :: CDIM      ! celdimension in km
 
   parameter(nf=47,ns=45,radm=ns+5,nh=24)
 	
@@ -66,14 +67,14 @@ module vars
   'PM_10','PM_25 ','Sulfates ','Nitrates ','OTHER','Organic C','Elemental Carbon  ',&
   'SulfatesJ','NitratesJ','OTHER','Organic C','Elemental Carbon'/)
   character (len=19) :: current_date,current_datem,mecha
-
+  character (len=40)  ::titulo
     common /domain/ ncel,nl,nx,ny,zlev
-    common /date/ current_date,cday,mecha,cname
+    common /date/ current_date,cday,mecha,cname,titulo
 
-end module vars
+end module varss
 
 program guarda_nc
-use vars
+use varss
 use netcdf
 
 	call lee
@@ -130,7 +131,9 @@ subroutine lee
   'T_ANNCO2.csv','T_ANNPM10.csv','T_ANNPM25.csv', &
   'GSO4_P.txt','PNO3_P.txt','OTHE_P.txt','POA_P.txt','PEC_P.txt',&
   'T_ANNCH4.csv','T_ANNCN.csv'/
-
+  NAMELIST /SCALE/ scala,scalm,scalp
+  integer unit_nml
+  logical existe
 ! Mole weight
     DATA WTM / 28.0, 30.00, 46.00, 17.00, 64.0,  16.043,&
               58.08, 58.61, 77.60,118.89, 95.16,118.72,&
@@ -148,28 +151,33 @@ subroutine lee
 !             OLE1 OLE2 PHEN PRD2 RCHO PACD
 !             TERP  CO2
 !             PM10 PM2.5 PSO4 PNO3 OTHER POA   PEC  CH4   CN
-DATA scala /  1.00,1.00,1.00,1.00,1.00,1.00, 1.00,1.00,1.00,1.00,1.00,1.00,& !
-&             1.00,1.00,1.00,1.00,1.00,1.00, 1.00,1.00,1.00,1.00,1.00,1.00,&
-&             1.00,1.00,1.00,1.00,1.00,1.00, 1.00,1.00,1.00,1.00,1.00,1.00,&
-&             1.00,1.00,&
-&             1.00,1.00,1.00,1.00,1.00,1.00, 1.00,1.00,1.00/
-DATA scalm /  1.00,1.00,1.00,1.00,1.00,1.00, 1.00,1.00,1.00,1.00,1.00,1.00,& !
-&             1.00,1.00,1.00,1.00,1.00,1.00, 1.00,1.00,1.00,1.00,1.00,1.00,&
-&             1.00,1.00,1.00,1.00,1.00,1.00, 1.00,1.00,1.00,1.00,1.00,1.00,&
-&             1.00,1.00,&
-&             1.00,1.00,1.00,1.00,1.00,1.00, 1.00,1.00,1.00/
-DATA scalp /  1.00,1.00,1.00,1.00,1.00,1.00, 1.00,1.00,1.00,1.00,1.00,1.00,& !
-&             1.00,1.00,1.00,1.00,1.00,1.00, 1.00,1.00,1.00,1.00,1.00,1.00,&
-&             1.00,1.00,1.00,1.00,1.00,1.00, 1.00,1.00,1.00,1.00,1.00,1.00,&
-&             1.00,1.00,&
-&             1.00,1.00,1.00,1.00,1.00,1.00, 1.00,1.00,1.00/
+    unit_nml = 9
+    existe = .FALSE.
+    write(6,*)' >>>> Reading file - namelist.saprc'
+    inquire ( FILE = 'namelist.saprc' , EXIST = existe )
+
+    if ( existe ) then
+    !  Opening the file.
+      open ( FILE   = 'namelist.saprc' ,      &
+      UNIT   =  unit_nml        ,      &
+      STATUS = 'OLD'            ,      &
+      FORM   = 'FORMATTED'      ,      &
+      ACTION = 'READ'           ,      &
+      ACCESS = 'SEQUENTIAL'     )
+      !  Reading the file
+      READ (unit_nml , NML = SCALE )
+      !WRITE (6    , NML = SCALE )
+    else
+      stop '***** No namelist.saprc'
+    ENDIF
+
 !
        mecha="SAPRC99"
 	write(6,*)' >>>> Reading file -  localiza.csv ---------'
 
 	open (unit=10,file='localiza.csv',status='old',action='read')
 	read (10,*) cdum  !Header
-	read (10,*) nx,ny  !Header
+	read (10,*) nx,ny,titulo  ! Dimensions and Title
 	ncel=nx*ny
     allocate(idcg(ncel),lon(ncel),lat(ncel),pop(ncel))
     allocate(utmx(ncel),utmy(ncel),utmz(ncel))
@@ -183,22 +191,22 @@ DATA scalp /  1.00,1.00,1.00,1.00,1.00,1.00, 1.00,1.00,1.00,1.00,1.00,1.00,& !
 	end do
 !
     do i=1,nx
-        do j=1,ny
-            k=i+(j-1)*nx
-            xlon(i,j)=lon(k)
-            xlat(i,j)=lat(k)
-            pob(i,j)=pop(k)
-            utmxd(i,j)=utmx(k)
-            utmyd(i,j)=utmy(k)
-            utmzd(i,j)=utmz(k)
-        end do
+      do j=1,ny
+        k=i+(j-1)*nx
+        xlon(i,j)=lon(k)
+        xlat(i,j)=lat(k)
+        pob(i,j)=pop(k)
+        utmxd(i,j)=utmx(k)
+        utmyd(i,j)=utmy(k)
+        utmzd(i,j)=utmz(k)
+      end do
     end do
-!   print *,ncel,xlon(1,1),xlat(1,1)
+    CDIM=(utmx(2)-utmx(1))/1000.  ! from meters to km
+    print *,CDIM,trim(titulo)
 	close(10)
 
 	do ii=1,nf
 		!write(6,*)' >>>> Reading emissions file -',fnameA(i),fnameM(i)
-
 		open(11,file=fnameA(ii),status='OLD',action='READ')
         read(11,*)cdum
 		if (ii.eq.1)then
@@ -293,6 +301,7 @@ DATA scalp /  1.00,1.00,1.00,1.00,1.00,1.00, 1.00,1.00,1.00,1.00,1.00,1.00,& !
             end if
 			  end do
               zlev =max(zlev,levl,levld)
+             if(zlev.gt.8) Stop "*** Change dimension line 177 allocate(eft.."
 			  exit busca3
 			end if
 		 end do
@@ -327,7 +336,6 @@ subroutine store
       integer :: isp(radm)
       integer,dimension(NDIMS):: dim,id_dim
       real,ALLOCATABLE :: ea(:,:,:,:)
-      real :: CDIM=3.0  ! celdimension in km
       character (len=19),dimension(NDIMS) ::sdim
       character(len=40):: FILE_NAME
       character(len=19),dimension(1,1)::Times
@@ -350,11 +358,11 @@ subroutine store
      hoy=date(7:8)//'-'//mes(date(5:6))//'-'//date(1:4)//' '//time(1:2)//':'//time(3:4)//':'//time(5:10)
     print *,hoy
     !write(current_date(4:4),'(A1)')char(6+48)
-     do periodo=1,2!2
+     do periodo=1,1!2 or 1
 	  if(periodo.eq.1) then
         FILE_NAME='wrfchemi.d01.'//trim(mecha)//'.'//current_date(1:19)         !******
 	   iit= 0
-	   eit= 11 !23
+	   eit= 23 !11 or 23
 	   iTime=current_date
 	  else if(periodo.eq.2) then
 	   iit=12
@@ -382,7 +390,7 @@ subroutine store
     dimids4 = (/id_dim(3),id_dim(4),id_dim(6),id_dim(1)/)
     print *,"Attributos Globales NF90_GLOBAL"
     !Attributos Globales NF90_GLOBAL
-    call check( nf90_put_att(ncid, NF90_GLOBAL, "TITLE","EI 2014 emissions for Cd Juarez Area"))
+    call check( nf90_put_att(ncid, NF90_GLOBAL, "TITLE",titulo))
     call check( nf90_put_att(ncid, NF90_GLOBAL, "START_DATE",iTime))
     call check( nf90_put_att(ncid, NF90_GLOBAL, "DAY ",cday))
     call check( nf90_put_att(ncid, NF90_GLOBAL, "SIMULATION_START_DATE",iTime))
