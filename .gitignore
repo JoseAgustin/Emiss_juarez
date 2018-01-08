@@ -1,4 +1,5 @@
 .DS_Store
+.tmpfile
 *.[oa]
 *~
 *.mod
