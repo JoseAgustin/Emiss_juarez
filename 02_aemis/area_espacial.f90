@@ -24,7 +24,6 @@ module land
     integer,allocatable :: grit(:),idt(:)  ! Ferrocarriles
     integer,allocatable :: grir(:),idr(:)  ! Terraceria
     integer,allocatable :: griv(:),idv(:)  ! Vialidades
-    integer,allocatable :: grito(:)      ! total grids
 
     integer,dimension(nf) :: nscc
     integer,dimension (nf,nm):: iem
@@ -65,7 +64,7 @@ contains
 
 subroutine lee
 implicit none
-    integer i,j,k,ntot
+    integer i,j,k
     character(len=14):: cdum,fname
     fname='bosque.csv'
     print *,'Lee ',fname
@@ -77,7 +76,6 @@ implicit none
         nl=nl+1
     end do
 100 print *,'numero de lineas',nl
-    ntot=nl
     allocate(grib(nl),idb(nl),fb(nl))
     rewind(10)
     read (10,*) cdum
@@ -96,7 +94,6 @@ implicit none
     nl=nl+1
     end do
 110 print *,'numero de lineas',nl
-    ntot=nl+ntot
     allocate(gria(nl),ida(nl),fa(nl))
     rewind(10)
     read (10,*) cdum
@@ -116,7 +113,6 @@ implicit none
         nl=nl+1
     end do
 120 print *,'numero de lineas',nl
-    ntot=nl+ntot
 !    Population fraction fp1 furb, fp2 frural, fp3 fpob
     allocate(grip(nl),idp(nl),fp1(nl),fp2(nl),fp3(nl))
     rewind(10)
@@ -138,7 +134,6 @@ implicit none
     nl=nl+1
     end do
 130 print *,'numero de lineas',nl
-    ntot=nl+ntot
     allocate(grie(nl),ide(nl),fe(nl))
     rewind(10)
     read (10,*) cdum
@@ -157,7 +152,6 @@ implicit none
         nl=nl+1
     end do
 140 print *,'numero de lineas',nl
-    ntot=nl+ntot
     allocate(griu(nl),idu(nl),fu(nl))
     rewind(10)
     read (10,*) cdum
@@ -176,7 +170,6 @@ implicit none
         nl=nl+1
     end do
 150 print *,'numero de lineas',nl
-    ntot=nl+ntot
     allocate(grim(nl),idm(nl),fm(nl))
     rewind(10)
     read (10,*) cdum
@@ -195,7 +188,6 @@ implicit none
     nl=nl+1
     end do
 160 print *,'numero de lineas',nl
-    ntot=nl+ntot
     allocate(grit(nl),idt(nl),ft(nl))
     rewind(10)
     read (10,*) cdum
@@ -214,7 +206,6 @@ implicit none
     nl=nl+1
     end do
 170 print *,'numero de lineas',nl
-    ntot=nl+ntot
     allocate(grir(nl),idr(nl),fr(nl))
     rewind(10)
     read (10,*) cdum
@@ -232,16 +223,15 @@ implicit none
     read(10,*,end=180) cdum
     nl=nl+1
     end do
-180 print *,'numero de lineas',nl,nl+ntot
-    ntot=nl+ntot
-    allocate(griv(nl),idv(nl),fv(nl),grito(ntot))
+180 print *,'numero de lineas',nl
+    allocate(griv(nl),idv(nl),fv(nl))
     rewind(10)
     read (10,*) cdum
     do i=1,nl
     read(10,*)griv(i),idv(i),fv(i)
     end do
     close(10)
-!   Read Emissions
+!
     do k=1,nf
         open (unit=10,file=efile(k),status='OLD',action='read')
         read (10,'(A)') cdum
@@ -255,13 +245,12 @@ implicit none
        end do ! i
         close(10)
     end do! k
-  call count
 end subroutine lee
 subroutine calculos
     implicit none
     integer i,j,k,l,m
-    allocate(eagr(size(gria),nf,nnscc))
-    allocate(ebos(size(grib),nf,nnscc))
+	allocate(eagr(size(gria),nf,nnscc))
+	allocate(ebos(size(grib),nf,nnscc))
     allocate(epob(size(grip),nf,nnscc))
     allocate(eaer(size(grie),nf,nnscc))
     allocate(ecen(size(griu),nf,nnscc))
@@ -317,7 +306,8 @@ subroutine calculos
         invcc: do i=1,nm          ! municipality
         if(idu(j).eq.iem(k,i)) then
             do l=1,nscc(k)
-                if(scc(k,l).eq.'2230070310') ecen(j,k,l)=emiss(i,l,k)*fu(j)*1e6 !Terminales de autobuses
+                if(scc(k,l).eq.'2230070310') ecen(j,k,l)=emiss(i,l,k)*fu(j)*1e6 !Terminal Buses
+                if(scc(k,l).eq.'2270008010') ecen(j,k,l)=emiss(i,l,k)*fu(j)*1e6 !Terminales de autobuses
             end do
             exit invcc
             end if
@@ -364,7 +354,7 @@ subroutine calculos
     invenr: do i=1,nm       ! municipality
         if(idr(j).eq.iem(k,i)) then
         do l=1,nscc(k)      ! SCC
-            if(scc(k,l).eq.'2296000000') eter(j,k,l)=emiss(i,l,k)*fr(j)*1e6  ! Caminos Terra
+   !         if(scc(k,l).eq.'2296000000') eter(j,k,l)=emiss(i,l,k)*fr(j)*1e6  ! Caminos Terra
         end do
         exit invenr
         end if
@@ -428,7 +418,7 @@ subroutine calculos
     if(scc(k,l).eq.'2850000010') epob(j,k,l)=emiss(i,l,k)*fp3(j)*1e6  ! Esteri Hosp
     if(scc(k,l).eq.'3333333333') epob(j,k,l)=emiss(i,l,k)*fp3(j)*1e6  ! Dist_LPG
     if(scc(k,l).eq.'5555555555') epob(j,k,l)=emiss(i,l,k)*fp3(j)*1e6  ! Uso_domestico
-!    if(scc(k,l).eq.'2296000000') epob(j,k,l)=emiss(i,l,k)*fp3(j)*1e6  !terraceria
+    if(scc(k,l).eq.'2296000000') epob(j,k,l)=emiss(i,l,k)*fp3(j)*1e6
      end do
             exit invenp
         end if
@@ -531,77 +521,5 @@ subroutine guarda
 300 format(I3,", g_per_year",<nnscc>(",",A10))
 310 format(I9,",",I6,",",F,",",F,<nnscc>(",",ES12.5))
 end subroutine guarda
-!
-subroutine count
-    integer i,j,k
-    integer,allocatable:: griba(:)
-    logical,allocatable::xl(:)
-    k=size(grito)
-    allocate(xl(k))
-    xl=.true.
-    do i=1,size(gria)
-      grito(i)=gria(i)
-    end do
-     j=size(gria)
-    do i=1,size(grib)
-      grito(i+j)=grib(i)
-    end do
-    j=j+size(grib)
-    do i=1,size(grip)
-      grito(i+j)=grip(i)
-    end do
-    j=j+size(grip)
-    do i=1,size(grie)
-      grito(i+j)=grie(i)
-    end do
-    j=j+size(grie)
-    do i=1,size(griu)
-      grito(i+j)=griu(i)
-    end do
-    j=j+size(griu)
-    do i=1,size(grim)
-      grito(i+j)=grim(i)
-    end do
-    j=j+size(grim)
-    do i=1,size(grit)
-      grito(i+j)=grit(i)
-    end do
-    j=j+size(grit)
-    do i=1,size(grir)
-      grito(i+j)=grir(i)
-    end do
-    j=j+size(grir)
-    do i=1,size(griv)
-      grito(i+j)=griv(i)
-    end do
-    do i=1,k-1
-      do j=i+1,k
-        if(grito(j).eq.grito(i).and.xl(j)) xl(j)=.false.
-      end do
-    end do
-    j=0
-    do i=1,k
-      if(xl(i)) j=j+1
-    end do
-    allocate(griba(j))
-    j=0
-    do i=1,k
-      if(xl(i)) then
-        j=j+1
-        griba(j)=grito(i)
-      end if
-    end do
-    deallocate(grito)
-    allocate(grito(j))
-    grito=griba
-    deallocate(griba)
-    open(unit=123,file="index.csv")
-    write(123,*)j,"Index"
-    do i=1,j
-      write(123,'(I8)')grito(i)
-    end do
-    close(123)
-end subroutine count
-
 end program area_espacial
 
