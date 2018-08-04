@@ -1,15 +1,15 @@
 !
-!	g_radm_2014.f90
+!	g_radm_2018.f90
 !	
 !
-!  Creado por Jose Agustin Garcia Reynoso el 12/07/17.
+!  Creado por Jose Agustin Garcia Reynoso el 19/11/2017.
 !
 !
 !  Proposito:
 !            Guarda los datos del inventario para el
 !            mecanismo RADM2 en formato netcdf y con NAMELIST
 !
-! ifort -O2 -axAVX -lnetcdff -L$NETCDF/lib -I$NETCDF/include g_radm_2014.f90 -o radm2.exe
+! ifort -O2 -axAVX -lnetcdff -L$NETCDF/lib -I$NETCDF/include g_radm_2018.f90 -o radm2018.exe
 !
 !
 !   Actualizacion de xlat, xlon             26/08/2012
@@ -21,6 +21,7 @@
 !   Se incluyen NO y NO2 de moviles         01/11/2017
 !   Se incluye NAMELIST                     08/11/2017
 !   Se lee CDIM y titulo de localiza.csv    19/11/2017
+!   Para anio 2018                          16/01/2018
 !   Se calcula el dia juliano                3/08/2018
 !
 module vars
@@ -334,13 +335,13 @@ subroutine store
     call date_and_time(date,time)
      hoy=date(7:8)//'-'//mes(date(5:6))//'-'//date(1:4)//' '//time(1:2)//':'//time(3:4)//':'//time(5:10)
     print *,hoy
-    !write(current_date(4:4),'(A1)')char(6+48)
+    write(current_date(4:4),'(A1)')char(8+48) ! para 2018
     JULDAY=juliano(current_date(1:4),current_date(6:7),current_date(9:10))
-     do periodo=1,2!1
+     do periodo=1,1!2 1
 	  if(periodo.eq.1) then
         FILE_NAME='wrfchemi.d01.'//trim(mecha)//'.'//current_date(1:19)         !******
 	   iit= 0
-	   eit= 11 !23
+	   eit= 23 !11
 	   iTime=current_date
 	  else if(periodo.eq.2) then
 	   iit=12
@@ -655,5 +656,6 @@ integer function intc(char)
     end if
     intc=(ichar(char(i:i))-48)*10**(l-i)+intc
   end do
+  return
 end function
 end program guarda_nc
