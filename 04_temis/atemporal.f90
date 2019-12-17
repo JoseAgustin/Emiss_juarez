@@ -12,11 +12,14 @@
 !
 !
 !   modificado
-!   14/08/2012  nombre archivos de PM 
+!   14/08/2012  Nombre archivos de PM
 !   02/10/2012  Ajuste en horas dia previo subroutina lee
 !   10/07/2017  Para 2014 nnscc 52, inclusion del 37123 y BC, CO2 y METH
-!   12/07/2017  Revision linea 158 se incluye else deallocate. Falta revisar 155
+!   12/07/2017  Revision linea 158 se incluye else deallocate. Falta revisar 155 DONE
 !    2/11/2017  Huso horario se calcula con el estado
+!    5/11/2017  Actualizacion en numero de lineas totales en emiA
+!   15/11/2017  Seleccion de numero de linea mayor de los datos de entrada emiA
+!   16/12/2019  Actualizacion en indices
 !
 module variables
 integer :: month,daytype
@@ -24,6 +27,7 @@ integer,parameter :: nf=10 !number of emission files
 integer,parameter :: nnscc=58 !max number of scc descriptors in input files
 integer,parameter ::juliano=365
 integer,parameter :: nh=24 ! number of hour per day
+integer :: nmax !number of max lines in emiA
 integer :: nm ! line number in emissions file
 integer :: lh ! line number in uso horario
 integer,dimension(nf) :: nscc ! number of scc codes per file
@@ -38,6 +42,7 @@ real,allocatable :: evoc(:,:,:) ! VOC emissions cel,scc and hour
 real,dimension(nnscc,nf) :: mes,dia,diap ! dia currentday, diap previous day
 real,dimension(nnscc,nf,nh):: hCST,hMST,hPST,hEST
 integer,dimension(3,nnscc,nf):: profile  ! 1=mon 2=weekday 3=hourly
+integer,allocatable :: id5(:,:) ! index per file
 character(len=3),dimension(juliano):: cdia
 character (len=19) :: current_date
 
@@ -89,7 +94,7 @@ subroutine lee
 	!          jan feb mar apr may jun jul aug sep oct nov dec
 	data daym /31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31/
 
-	print *,"READING fecha.txt file"
+   print *,"READING fecha.txt file"
 	open (unit=10,file='fecha.txt',status='OLD',action='read')
 	read (10,*)month  
 	read (10,*)idia
@@ -135,6 +140,8 @@ subroutine lee
     close(10)
 	if(daytype.eq.0) STOP 'Error in daytype=0'
 !
+   call maxline(nmax)
+
 	do k=1,nf
 	open (unit=10,file=efile(k),status='OLD',action='read')
 	read (10,'(A)') cdum
@@ -147,11 +154,12 @@ subroutine lee
 	   nm=nm+1
 	end do
 100	 continue
-     print *,"  mn= ",nm
+     write(6,134)"  mn=",nm,"nmax=",nmax
+    if (nm.gt.nmax) STOP "*** ERROR: nm larger than nmax edit code line 140"
 	 rewind(10)
 	 if(k.eq.1) then
         allocate(idcel(nm),idcel2(nm),idcel3(nm),idsm(nm))
-        allocate(emiA(nf,44214,nnscc))
+        allocate(emiA(nf,nmax,nnscc),id5(nf,nmax))
         idsm=0
     else
         deallocate(idcel,idcel2,idcel3,idsm)
@@ -162,6 +170,7 @@ subroutine lee
 	read (10,'(A)') cdum
 	do i=1,nm
 		read(10,*) idcel(i),idsm(i),rdum,rdum,(emiA(k,i,j),j=1,nscc(k))
+      id5(k,i)=idcel(i)
 	        !print *,idcel(i),idsm(i),(emiA(k,i,j),j=1,16),nscc(k),k
 	end do
     idcel3=idcel
@@ -374,11 +383,12 @@ print *,'   Done ',nfile,daytype,maxval(hCST)!,maxval(hPST),maxval(hMST)
 	 !end do
 	 print *,'   Done ',nfilep,daytype,maxval(hEST)!,maxval(hPST),maxval(hMST)
 	end do ! K
-	close(15)
-	close(16)
-	close(17)
-	close(18)
+    close(15)
+    close(16)
+    close(17)
+    close(18)
     close(19)
+134 FORMAT(4x,A5,x,I6,x,A5,I6)
 end subroutine lee
 !                                 _
 !  ___ ___  _ __ ___  _ __  _   _| |_ ___
@@ -402,8 +412,8 @@ subroutine compute
       print *,efile(k)
 !dir$ loop count min(512)
 	  do ii=1,size(idcel2)
-	  do i=1,nm
-		 if(idcel2(ii).eq.idcel(i))then
+	  do i=1,size(id5,2)
+		 if(idcel2(ii).eq.id5(k,i))then
 		  do l=1,nh
 	        do j=1,nscc(k)
     if(idsm(i).eq.5) emis(ii,k,l)=emis(ii,k,l)+emiA(k,i,j)*mes(j,k)*hEST(j,k,l)
@@ -423,8 +433,8 @@ subroutine compute
     epm2=0
 	k=nf-1
    do ii=1,size(idcel2)
-    do i=1,nm
-    if(idcel2(ii).eq.idcel(i))then
+    do i=1,size(id5,2)
+    if(idcel2(ii).eq.id5(k,i))then
 		  do l=1,nh
 	        do j=1,nscc(k)
     if(idsm(i).eq.5) epm2(ii,j,l)=epm2(ii,j,l)+emiA(k,i,j)*mes(j,k)*hEST(j,k,l)
@@ -444,8 +454,8 @@ subroutine compute
 
 print *,"   Compute  VOCs",size(idcel2)
    do ii=1,size(idcel2)
-    do i=1,nm
-     if(idcel2(ii).eq.idcel(i))then
+    do i=1,size(id5,2)
+     if(idcel2(ii).eq.id5(k,i))then
 		  do l=1,nh
 	        do j=1,nscc(k)
     if(idsm(i).eq.5) evoc(ii,j,l)=evoc(ii,j,l)+emiA(nf,i,j)*mes(j,nf)*hEST(j,nf,l)
@@ -507,6 +517,7 @@ subroutine storage
 	close(10)
     print *,"*****  DONE Temporal Area *****"
 110 format(I7,",",I10,",",23(ES12.3,","),ES12.3)
+    deallocate(idcel,id5,idcel2,idsm,emiA,emis,epm2,evoc)
 end subroutine storage
 !                       _
 !  ___ ___  _   _ _ __ | |_
@@ -519,15 +530,7 @@ subroutine count
   integer idum
 !  Se ordenan los indices
   call hpsort(size(idcel3))
-!  do i=1,nm-1
-!    do j=1,nm-i
-!     if(idcel3(j).gt.idcel3(j+1)) then
-!       idum = idcel3(j)
-!       idcel3(j)=idcel3(j+1)
-!       idcel3(j+1)=idum
-!     end if
-!    end do
-!  end do
+
   idcel2(1)=idcel3(1)
   j=1
   do i=2,nm
@@ -580,7 +583,14 @@ subroutine huso_horario
         print *,'Error item:', MINLOC(idsm),'value:', idsm(MINLOC(idsm)),minval(idsm)
         STOP 'Value must be larger or equal to 5'
     end if
+print *,'** END uso horario'
 end subroutine huso_horario
+!  _                          _
+! | |__  _ __  ___  ___  _ __| |_
+! | '_ \| '_ \/ __|/ _ \| '__| __|
+! | | | | |_) \__ \ (_) | |  | |_
+! |_| |_| .__/|___/\___/|_|   \__|
+!       |_|
 subroutine hpsort(n)
     implicit none
     integer n
@@ -620,19 +630,44 @@ subroutine hpsort(n)
       idcel3(i)=rra
     goto 10
 end subroutine hpsort
+!                       _ _
+!  _ __ ___   __ ___  _| (_)_ __   ___
+! | '_ ` _ \ / _` \ \/ / | | '_ \ / _ \
+! | | | | | | (_| |>  <| | | | | |  __/
+! |_| |_| |_|\__,_/_/\_\_|_|_| |_|\___|
+!
+subroutine maxline(entero)
+    implicit none
+    integer,intent(out):: entero
+    integer:: k,inum
+    character(len=14):: cdum
+    entero=-1
+    do k=1,nf
+      open(unit=14,file=efile(k),status='OLD')
+       inum=0
+      do
+        read(14,*,end=100) cdum
+        inum=inum+1
+      end do
+100   close(14)
+       inum=inum-2
+      entero=max(inum,entero)
+      !print '(I6)',entero
+    end do
+end subroutine maxline
 subroutine piksrt(n)
 INTEGER n
 integer i,j
 real a
-do j=2,N
-a=idcel3(j)
-do i=j-1,1,-1
-if(idcel3(i).le.a) goto 10
-idcel3(i+1)=idcel3(i)
-end do
-i=0
-10 idcel3(i+1)=a
-end do
+  do j=2,N
+  a=idcel3(j)
+    do i=j-1,1,-1
+      if(idcel3(i).le.a) goto 10
+      idcel3(i+1)=idcel3(i)
+    end do
+  i=0
+  10 idcel3(i+1)=a
+  end do
 return
 end subroutine piksrt
 end program atemporal
