@@ -33,7 +33,7 @@ integer :: lh ! line number in uso horario
 integer,dimension(nf) :: nscc ! number of scc codes per file
 integer*8,dimension(nnscc) ::iscc 
 integer, allocatable :: idcel(:),idcel2(:),idcel3(:)
-integer, allocatable :: idsm(:) ! state municipality IDs emiss and usoH
+integer, allocatable :: idsm(:,:) ! state municipality IDs emiss and usoH
 real ::fweek
 real,allocatable ::emiA(:,:,:) !Area emisions from files cel,ssc,file
 real,allocatable :: emis(:,:,:) ! Emission by cel,file and hour (inorganic)
@@ -158,18 +158,19 @@ subroutine lee
     if (nm.gt.nmax) STOP "*** ERROR: nm larger than nmax edit code line 140"
 	 rewind(10)
 	 if(k.eq.1) then
-        allocate(idcel(nm),idcel2(nm),idcel3(nm),idsm(nm))
-        allocate(emiA(nf,nmax,nnscc),id5(nf,nmax))
+        allocate(idcel(nm),idcel2(nm),idcel3(nm))
+        allocate(emiA(nf,nmax,nnscc),id5(nf,nmax),idsm(nf,nmax))
+        emiA=0
         idsm=0
+        id5=0
     else
-        deallocate(idcel,idcel2,idcel3,idsm)
-        allocate(idcel(nm),idcel2(nm),idcel3(nm),idsm(nm))
-        idsm=0
+        deallocate(idcel,idcel2,idcel3)
+        allocate(idcel(nm),idcel2(nm),idcel3(nm))
 	end if
 	read (10,'(A)') cdum
 	read (10,'(A)') cdum
 	do i=1,nm
-		read(10,*) idcel(i),idsm(i),rdum,rdum,(emiA(k,i,j),j=1,nscc(k))
+		read(10,*) idcel(i),idsm(k,i),rdum,rdum,(emiA(k,i,j),j=1,nscc(k))
       id5(k,i)=idcel(i)
 	        !print *,idcel(i),idsm(i),(emiA(k,i,j),j=1,16),nscc(k),k
 	end do
@@ -416,10 +417,10 @@ subroutine compute
 		 if(idcel2(ii).eq.id5(k,i))then
 		  do l=1,nh
 	        do j=1,nscc(k)
-    if(idsm(i).eq.5) emis(ii,k,l)=emis(ii,k,l)+emiA(k,i,j)*mes(j,k)*hEST(j,k,l)
-    if(idsm(i).eq.6) emis(ii,k,l)=emis(ii,k,l)+emiA(k,i,j)*mes(j,k)*hCST(j,k,l)
-    if(idsm(i).eq.7) emis(ii,k,l)=emis(ii,k,l)+emiA(k,i,j)*mes(j,k)*hMST(j,k,l)
-    if(idsm(i).eq.8) emis(ii,k,l)=emis(ii,k,l)+emiA(k,i,j)*mes(j,k)*hPST(j,k,l)
+    if(idsm(k,i).eq.5) emis(ii,k,l)=emis(ii,k,l)+emiA(k,i,j)*mes(j,k)*hEST(j,k,l)
+    if(idsm(k,i).eq.6) emis(ii,k,l)=emis(ii,k,l)+emiA(k,i,j)*mes(j,k)*hCST(j,k,l)
+    if(idsm(k,i).eq.7) emis(ii,k,l)=emis(ii,k,l)+emiA(k,i,j)*mes(j,k)*hMST(j,k,l)
+    if(idsm(k,i).eq.8) emis(ii,k,l)=emis(ii,k,l)+emiA(k,i,j)*mes(j,k)*hPST(j,k,l)
 		    end do
 		  end do
 		  end if
@@ -437,10 +438,10 @@ subroutine compute
     if(idcel2(ii).eq.id5(k,i))then
 		  do l=1,nh
 	        do j=1,nscc(k)
-    if(idsm(i).eq.5) epm2(ii,j,l)=epm2(ii,j,l)+emiA(k,i,j)*mes(j,k)*hEST(j,k,l)
-    if(idsm(i).eq.6) epm2(ii,j,l)=epm2(ii,j,l)+emiA(k,i,j)*mes(j,k)*hCST(j,k,l)
-    if(idsm(i).eq.7) epm2(ii,j,l)=epm2(ii,j,l)+emiA(k,i,j)*mes(j,k)*hMST(j,k,l)
-    if(idsm(i).eq.8) epm2(ii,j,l)=epm2(ii,j,l)+emiA(k,i,j)*mes(j,k)*hPST(j,k,l)
+    if(idsm(k,i).eq.5) epm2(ii,j,l)=epm2(ii,j,l)+emiA(k,i,j)*mes(j,k)*hEST(j,k,l)
+    if(idsm(k,i).eq.6) epm2(ii,j,l)=epm2(ii,j,l)+emiA(k,i,j)*mes(j,k)*hCST(j,k,l)
+    if(idsm(k,i).eq.7) epm2(ii,j,l)=epm2(ii,j,l)+emiA(k,i,j)*mes(j,k)*hMST(j,k,l)
+    if(idsm(k,i).eq.8) epm2(ii,j,l)=epm2(ii,j,l)+emiA(k,i,j)*mes(j,k)*hPST(j,k,l)
 		    end do
 		  end do
       end if
@@ -458,10 +459,10 @@ print *,"   Compute  VOCs",size(idcel2)
      if(idcel2(ii).eq.id5(k,i))then
 		  do l=1,nh
 	        do j=1,nscc(k)
-    if(idsm(i).eq.5) evoc(ii,j,l)=evoc(ii,j,l)+emiA(nf,i,j)*mes(j,nf)*hEST(j,nf,l)
-    if(idsm(i).eq.6) evoc(ii,j,l)=evoc(ii,j,l)+emiA(nf,i,j)*mes(j,nf)*hCST(j,nf,l)
-    if(idsm(i).eq.7) evoc(ii,j,l)=evoc(ii,j,l)+emiA(nf,i,j)*mes(j,nf)*hMST(j,nf,l)
-    if(idsm(i).eq.8) evoc(ii,j,l)=evoc(ii,j,l)+emiA(nf,i,j)*mes(j,nf)*hPST(j,nf,l)
+    if(idsm(k,i).eq.5) evoc(ii,j,l)=evoc(ii,j,l)+emiA(nf,i,j)*mes(j,nf)*hEST(j,nf,l)
+    if(idsm(k,i).eq.6) evoc(ii,j,l)=evoc(ii,j,l)+emiA(nf,i,j)*mes(j,nf)*hCST(j,nf,l)
+    if(idsm(k,i).eq.7) evoc(ii,j,l)=evoc(ii,j,l)+emiA(nf,i,j)*mes(j,nf)*hMST(j,nf,l)
+    if(idsm(k,i).eq.8) evoc(ii,j,l)=evoc(ii,j,l)+emiA(nf,i,j)*mes(j,nf)*hPST(j,nf,l)
 		    end do
 		  end do
       end if
@@ -478,16 +479,21 @@ print *,"   Compute  VOCs",size(idcel2)
 subroutine storage
   implicit none
   integer i,j,k,l
+  real suma
   character(len=3):: cdia(7)
   data cdia/'MON','TUE','WND','THR','FRD','SAT','SUN'/
- print *,"Storage"
+  print *,"Storage"
   do k=1,nf-2
    open(unit=10,file=casn(k),action='write')
    write(10,*)casn(k),'ID, Hr to Hr24'
-   write(10,'(I8,4A)')size(emis,dim=1),",",current_date,', ',cdia(daytype)
+   write(10,'(I8,4A)')size(emis,dim=1),",",current_date,", ",cdia(daytype)
    do i=1,size(emis,dim=1)
-     write(10,100)idcel2(i),(emis(i,k,l),l=1,nh)
-   end do
+    suma=0
+    do l=1,nh
+        suma=suma+emis(i,k,l)
+    end do
+        if(suma.gt.0) write(10,100)idcel2(i),(emis(i,k,l),l=1,nh)
+    end do
    close(unit=10)
   end do
 100 format(I7,",",23(ES12.3,","),ES12.3)
@@ -499,7 +505,11 @@ subroutine storage
    write(10,'(I8,4A)')size(epm2,dim=1)*nscc(k),",",current_date,', ',cdia(daytype)
    do i=1,size(epm2,dim=1)
      do j=1,nscc(k)
-     write(10,110)idcel2(i),iscc(j),(epm2(i,j,l),l=1,nh)
+     suma=0
+     do l=1,nh
+       suma=suma+epm2(i,j,l)
+     end do
+     if(suma.gt.0)  write(10,110)idcel2(i),iscc(j),(epm2(i,j,l),l=1,nh)
      end do
    end do
 	close(10)
@@ -511,7 +521,11 @@ subroutine storage
    write(10,'(I8,4A)')size(evoc,dim=1)*nscc(k),",",current_date,', ',cdia(daytype)
    do i=1,size(evoc,dim=1)
      do j=1,nscc(k)
-     write(10,110)idcel2(i),iscc(j),(evoc(i,j,l),l=1,nh)
+     suma=0
+     do l=1,nh
+       suma=suma+evoc(i,j,l)
+     end do
+     if(suma.gt.0) write(10,110)idcel2(i),iscc(j),(evoc(i,j,l),l=1,nh)
      end do
    end do
 	close(10)
@@ -566,21 +580,23 @@ end subroutine count
 ! |_| |_|\__,_|___/\___/___|_| |_|\___/|_|  \__,_|_|  |_|\___/
 !                     |_____|
 subroutine huso_horario
-    integer ::i,iedo
+    integer ::i,k,iedo
     print *,'Start uso horario'
-    do i=1,nm
-        iedo=int(idsm(i)/1000)
-        idsm(i)=6
-        if(iedo.eq.2 .or.iedo.eq.3) idsm(i)=8
-        if(iedo.eq.8 .or.iedo.eq.18 .and.iedo.eq.25 .and.iedo.eq.26)idsm(i)=7
-        if(iedo.eq.23) idsm(i)=5
+    do k=1,nf
+       do i=1,nm
+        iedo=int(idsm(k,i)/1000)
+        idsm(k,i)=6
+        if(iedo.eq.2 .or.iedo.eq.3) idsm(k,i)=8
+        if(iedo.eq.8 .or.iedo.eq.18 .and.iedo.eq.25 .and.iedo.eq.26)idsm(k,i)=7
+        if(iedo.eq.23) idsm(k,i)=5
+       end do
     end do
     if(maxval(idsm).ge.9 ) then
-        print *,'Error item:', MAXLOC(idsm),'value:', idsm(MAXLOC(idsm)),maxval(idsm)
+        print *,'Error item:', MAXLOC(idsm),'value:',maxval(idsm)
         STOP 'Value must be less or equal to 8'
     end if
     if(minval(idsm).le. 4 ) then
-        print *,'Error item:', MINLOC(idsm),'value:', idsm(MINLOC(idsm)),minval(idsm)
+        print *,'Error item:', MINLOC(idsm),'value:',minval(idsm)
         STOP 'Value must be larger or equal to 5'
     end if
 print *,'** END uso horario'
