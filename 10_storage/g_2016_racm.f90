@@ -1,5 +1,5 @@
 !
-!	g_2014_racm.f90
+!	g_2016_racm.f90
 !	
 !
 !  Creado por Jose Agustin Garcia Reynoso el 14/07/17.
@@ -9,7 +9,7 @@
 !            Guarda los datos del inventario para el
 !            mecanismo RACM2 en formato netcdf
 !
-! ifort -O2 -axAVX -lnetcdff -L$NETCDF/lib -I$NETCDF/include g_2014_racm.f90 -o racm2.exe
+! ifort -O2 -axAVX -lnetcdff -L$NETCDF/lib -I$NETCDF/include g_2016_racm.f90 -o racm2.exe
 !
 !
 !   Actualizacion de xlat, xlon             26/08/2012
@@ -369,7 +369,7 @@ subroutine store
     call date_and_time(date,time)
      hoy=date(7:8)//'-'//mes(date(5:6))//'-'//date(1:4)//' '//time(1:2)//':'//time(3:4)//':'//time(5:10)
     print *,hoy
-    write(current_date(1:4),'(I4)') 2014 ! para 2014
+    write(current_date(1:4),'(I4)') 2016 ! para 2016
     JULDAY=juliano(current_date(1:4),current_date(6:7),current_date(9:10))
      do periodo=1,1!2
 	  if(periodo.eq.1) then
